@@ -7,8 +7,12 @@
 template < typename Logger >
 void LogSimulatedAnnealingResults(Logger& logger, std::vector<SimulatedAnnealingResult>& results);
 
-double func(double x) {
+double UnimodalFunction(double x) {
     return std::cos(x)*std::tanh(x);
+}
+
+double MultimodalFunction(double x) {
+    return std::cos(x)*std::tanh(x)*std::sin(5*x);
 }
 
 int main() {
@@ -17,11 +21,19 @@ int main() {
     double maxT = 10000;
     double minT = 0.01;
 
-    auto results = SimulatedAnnealingSearch(func, a, b, maxT, minT);
+    auto unimodalResults = SimulatedAnnealingSearch(UnimodalFunction, a, b, maxT, minT);
+    auto multimodalResults = SimulatedAnnealingSearch(MultimodalFunction, a, b, maxT, minT);
 
-    std::ofstream file{"simulated_annealing.txt", std::ios::trunc};
-    LogSimulatedAnnealingResults(file, results);
-    file.close();
+    std::ofstream unimodalfile{"../search_results/unimodal_simulated_annealing.csv", std::ios::trunc};
+    LogSimulatedAnnealingResults(unimodalfile, unimodalResults);
+    unimodalfile.close();
+
+    std::ofstream multimodalfile{"../search_results/multimodal_simulated_annealing.csv", std::ios::trunc};
+    if (!multimodalfile.is_open()) {
+        return 1;
+    }
+    LogSimulatedAnnealingResults(multimodalfile, multimodalResults);
+    multimodalfile.close();
 
     return 0;
 }
@@ -34,5 +46,4 @@ void LogSimulatedAnnealingResults(Logger& logger, std::vector<SimulatedAnnealing
     for (const auto& result : results) {
         result.LogResult(logger);
     }
-    SimulatedAnnealingResult::LogFooter(logger);
 }

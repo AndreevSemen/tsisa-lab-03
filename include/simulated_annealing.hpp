@@ -8,7 +8,7 @@
 #include <iomanip>
 
 void IfInvalidBoundsThrow(double a, double b);
-double RandomFrom0To1(std::mt19937_64& generator);
+double Random(double a, double b);
 
 class SimulatedAnnealingResult {
 private:
@@ -16,9 +16,12 @@ private:
     double _T;
     double _x;
     double _F_x;
+    double _min_F_x;
+    double _P;
+    bool _passed;
 
 public:
-    SimulatedAnnealingResult(size_t N, double T, double x, double F_x);
+    SimulatedAnnealingResult(size_t N, double T, double x, double F_x, double min_F_x, double P, bool passed);
 
     double GetT() const;
     double GetX() const;
@@ -28,16 +31,14 @@ public:
     static void LogHeader(Logger& logger) {
         size_t cellSize = 9;
 
-        for (size_t i = 0; i < 4*cellSize + 4; ++i) {
-            logger << "_";
-        }
+        logger << std::setw(cellSize) << "N" << ",";
+        logger << std::setw(cellSize) << "T" << ",";
+        logger << std::setw(cellSize) << "X" << ",";
+        logger << std::setw(cellSize) << "F(x)" << ",";
+        logger << std::setw(cellSize) << "minimum" << ",";
+        logger << std::setw(cellSize) << "P" << ",";
+        logger << std::setw(cellSize) << "passed";
         logger << std::endl;
-
-        logger << "|" << std::setw(cellSize) << "N";
-        logger << "|" << std::setw(cellSize) << "T";
-        logger << "|" << std::setw(cellSize) << "X";
-        logger << "|" << std::setw(cellSize) << "F(x)";
-        logger << "|" << std::endl;
     }
 
     template < typename Logger >
@@ -45,25 +46,14 @@ public:
         size_t cellSize = 9;
         size_t precision = 4;
 
-        LogFooter(logger);
-        logger << "|" << std::setw(cellSize) << _N;
-        logger << "|" << std::setw(cellSize) << std::setprecision(precision) << _T;
-        logger << "|" << std::setw(cellSize) << std::setprecision(precision) << _x;
-        logger << "|" << std::setw(cellSize) << std::setprecision(precision) << _F_x;
-        logger << "|" << std::endl;
-    }
-
-    template < typename Logger >
-    static void LogFooter(Logger& logger) {
-        size_t cellSize = 9;
-
-        for (size_t i = 0; i < 4; ++i) {
-            logger << "|";
-            for (size_t i = 0; i < cellSize; ++i) {
-                logger << "_";
-            }
-        }
-        logger << "|" << std::endl;
+        logger << std::setw(cellSize) << _N  << ",";
+        logger << std::setw(cellSize) << std::setprecision(precision) << std::fixed << _T << ",";
+        logger << std::setw(cellSize) << std::setprecision(precision) << std::fixed << _x << ",";
+        logger << std::setw(cellSize) << std::setprecision(precision) << std::fixed << _F_x << ",";
+        logger << std::setw(cellSize) << std::setprecision(precision) << std::fixed << _min_F_x << ",";
+        logger << std::setw(cellSize) << std::setprecision(precision) << std::fixed << _P << ",";
+        logger << std::setw(cellSize) << std::setprecision(precision) << std::boolalpha << _passed;
+        logger << std::endl;
     }
 };
 
@@ -76,27 +66,25 @@ std::vector<SimulatedAnnealingResult> SimulatedAnnealingSearch(Func func,
 
     std::vector<SimulatedAnnealingResult> results;
 
-    std::mt19937_64 randomGenerator{std::random_device{}()};
-
     double F_x = std::numeric_limits<double>::max();
     double currentT = maxT;
 
-    size_t N = 1;
-    while (currentT >= minT) {
-
-        double x = (b - a) * RandomFrom0To1(randomGenerator) + a;
+    for (size_t N = 1; currentT >= minT; ++N) {
+        double x = Random(a, b);
 
         double newF_x = func(x);
         double deltaF_x = newF_x - F_x;
-        if (newF_x < F_x ||
-            RandomFrom0To1(randomGenerator) < CalculateP(deltaF_x, currentT)) {
+
+        double P = CalculateP(deltaF_x, currentT);
+        bool passed = false;
+        if (Random(0, 1) < CalculateP(deltaF_x, currentT)) {
             F_x = newF_x;
+            passed = true;
         }
 
-        results.emplace_back(SimulatedAnnealingResult{N, currentT, x, F_x});
+        results.emplace_back(SimulatedAnnealingResult{N, currentT, x, newF_x, F_x, P, passed});
 
         currentT *= 0.95;
-        ++N;
     }
 
     return results;
