@@ -16,16 +16,11 @@ private:
     double _T;
     double _x;
     double _F_x;
-    double _min_F_x;
     double _P;
     bool _passed;
 
 public:
-    SimulatedAnnealingResult(size_t N, double T, double x, double F_x, double min_F_x, double P, bool passed);
-
-    double GetT() const;
-    double GetX() const;
-    double GetF_x() const;
+    SimulatedAnnealingResult(size_t N, double T, double x, double F_x, double P, bool passed);
 
     template < typename Logger >
     static void LogHeader(Logger& logger) {
@@ -35,7 +30,6 @@ public:
         logger << std::setw(cellSize) << "T" << ",";
         logger << std::setw(cellSize) << "X" << ",";
         logger << std::setw(cellSize) << "F(x)" << ",";
-        logger << std::setw(cellSize) << "minimum" << ",";
         logger << std::setw(cellSize) << "P" << ",";
         logger << std::setw(cellSize) << "passed";
         logger << std::endl;
@@ -44,13 +38,12 @@ public:
     template < typename Logger >
     void LogResult(Logger& logger) const {
         size_t cellSize = 9;
-        size_t precision = 4;
+        size_t precision = 6;
 
         logger << std::setw(cellSize) << _N  << ",";
         logger << std::setw(cellSize) << std::setprecision(precision) << std::fixed << _T << ",";
         logger << std::setw(cellSize) << std::setprecision(precision) << std::fixed << _x << ",";
         logger << std::setw(cellSize) << std::setprecision(precision) << std::fixed << _F_x << ",";
-        logger << std::setw(cellSize) << std::setprecision(precision) << std::fixed << _min_F_x << ",";
         logger << std::setw(cellSize) << std::setprecision(precision) << std::fixed << _P << ",";
         logger << std::setw(cellSize) << std::setprecision(precision) << std::boolalpha << _passed;
         logger << std::endl;
@@ -67,24 +60,24 @@ std::vector<SimulatedAnnealingResult> SimulatedAnnealingSearch(Func func,
     std::vector<SimulatedAnnealingResult> results;
 
     double F_x = std::numeric_limits<double>::max();
-    double currentT = maxT;
+    double X = 0;
 
-    for (size_t N = 1; currentT >= minT; ++N) {
-        double x = Random(a, b);
+    for (size_t N = 1; maxT > minT; ++N, maxT *= 0.95) {
+        double randomX = Random(a, b);
+        double randomF_x = func(randomX);
 
-        double newF_x = func(x);
-        double deltaF_x = newF_x - F_x;
+        double deltaF = randomF_x - F_x;
+        double P = CalculateP(deltaF, maxT);
 
-        double P = CalculateP(deltaF_x, currentT);
-        bool passed = false;
-        if (Random(0, 1) < CalculateP(deltaF_x, currentT)) {
-            F_x = newF_x;
-            passed = true;
+        bool isPassed = false;
+        if (Random(0, 1) < P) {
+            F_x = randomF_x;
+            X = randomX;
+
+            isPassed = true;
         }
 
-        results.emplace_back(SimulatedAnnealingResult{N, currentT, x, newF_x, F_x, P, passed});
-
-        currentT *= 0.95;
+        results.emplace_back(SimulatedAnnealingResult{N, maxT, X, F_x, P, isPassed});
     }
 
     return results;
